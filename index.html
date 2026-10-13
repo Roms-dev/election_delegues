@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Élection des délégués</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --plexi: #E6ECF1;      /* fond : urne transparente */
+    --encre: #172036;      /* texte : encre marine */
+    --encre-douce: #4A5672;
+    --papier: #FFFFFF;     /* bulletin */
+    --bic: #2546C8;        /* stylo bille : sélection */
+    --bic-pale: #E4E9FA;
+    --tampon: #C42B3A;     /* tampon "A voté" */
+    --trait: #C9D2DC;
+    color-scheme: light;
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--encre);
+    background: var(--plexi);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; font-size: 16px; line-height: 1.5; }
+  button, input { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .page {
+    max-width: 1080px; margin: 0 auto;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(48px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* En-tête */
+  .entete {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px;
+    padding: 20px 0 22px; margin-bottom: 28px; border-bottom: 3px solid var(--encre);
+  }
+  h1 {
+    margin: 0; font-stretch: 125%; font-weight: 850; letter-spacing: -0.025em;
+    font-size: clamp(2.1rem, 7vw, 4rem); line-height: 0.92;
+  }
+  .classe { display: block; margin-top: 10px; font-stretch: 80%; font-weight: 600; font-size: 1.05rem; color: var(--encre-douce); }
+  .qui { font-size: 0.95rem; color: var(--encre-douce); }
+  @media (min-width: 700px) { .qui { text-align: right; } }
+  .qui strong { color: var(--encre); }
+  .lien {
+    background: none; border: 0; padding: 0; margin-left: 6px; cursor: pointer;
+    color: var(--bic); text-decoration: underline; text-underline-offset: 3px;
+  }
+
+  h2 { margin: 0 0 6px; font-stretch: 112%; font-weight: 800; font-size: 1.45rem; letter-spacing: -0.01em; line-height: 1.15; }
+  h3 { margin: 22px 0 8px; font-stretch: 100%; font-weight: 700; font-size: 1.05rem; }
+  p { margin: 0 0 12px; max-width: 62ch; }
+
+  /* Feuille de papier (bulletin) */
+  .papier {
+    background: var(--papier); border: 1px solid var(--trait); border-radius: 3px;
+    padding: 24px 22px;
+  }
+
+  /* Écran de connexion */
+  .connexion { max-width: 460px; margin: 6vh auto 0; }
+  .connexion p { color: var(--encre-douce); }
+  .champ { display: flex; gap: 10px; margin-top: 18px; }
+  .champ input {
+    flex: 1; min-width: 0; padding: 12px 14px; font-size: 1.1rem;
+    border: 2px solid var(--encre); border-radius: 3px; background: var(--papier);
+  }
+  .champ input:focus { outline: 3px solid var(--bic); outline-offset: 2px; }
+
+  .bouton {
+    padding: 12px 20px; border: 2px solid var(--encre); border-radius: 3px; cursor: pointer;
+    background: var(--encre); color: var(--papier); font-weight: 700; font-stretch: 105%;
+  }
+  .bouton:hover:not(:disabled) { background: var(--bic); border-color: var(--bic); }
+  .bouton:disabled { opacity: 0.35; cursor: not-allowed; }
+  .bouton.secondaire { background: var(--papier); color: var(--encre); }
+  .bouton.secondaire:hover { background: var(--plexi); color: var(--encre); border-color: var(--encre); }
+  .bouton:focus-visible, .lien:focus-visible { outline: 3px solid var(--bic); outline-offset: 3px; }
+
+  .erreur { color: var(--tampon); font-weight: 600; margin: 12px 0 0; min-height: 1.5em; }
+
+  /* Mise en page vote + résultats */
+  .grille { display: grid; gap: 28px; align-items: start; }
+  @media (min-width: 880px) {
+    .grille { grid-template-columns: 1.4fr 1fr; }
+    .resultats { position: sticky; top: 20px; }
+  }
+
+  /* Bulletin de vote */
+  .bulletin { padding: 0; }
+  .bulletin-tete { padding: 18px 22px 16px; border-bottom: 2px dashed var(--trait); }
+  .bulletin-tete p { margin: 0; color: var(--encre-douce); font-size: 0.95rem; }
+  fieldset { border: 0; margin: 0; padding: 18px 22px 6px; }
+  legend { padding: 0; font-stretch: 112%; font-weight: 800; font-size: 1.2rem; }
+  .consigne { font-size: 0.9rem; color: var(--encre-douce); margin: 2px 0 12px; }
+
+  .puces { display: flex; flex-wrap: wrap; gap: 8px; }
+  .puce { position: relative; }
+  .puce input { position: absolute; opacity: 0; pointer-events: none; }
+  .puce span {
+    display: inline-block; padding: 7px 12px; cursor: pointer; user-select: none;
+    border: 1.5px solid var(--trait); border-radius: 3px; background: var(--papier);
+    font-size: 0.95rem; line-height: 1.25;
+  }
+  .puce span:hover { border-color: var(--encre); }
+  .puce input:checked + span {
+    background: var(--bic); border-color: var(--bic); color: var(--papier); font-weight: 650;
+  }
+  .puce input:checked + span::before { content: "✓ "; }
+  .puce input:focus-visible + span { outline: 3px solid var(--bic); outline-offset: 2px; }
+  .puce input:disabled + span { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+
+  .pied-bulletin {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
+    margin-top: 14px; padding: 16px 22px 20px; border-top: 2px dashed var(--trait);
+  }
+  .recap { margin: 0; font-size: 0.95rem; color: var(--encre-douce); }
+  .recap b { color: var(--encre); }
+  .bulletin .erreur { padding: 0 22px 16px; margin: 0; }
+
+  /* A voté */
+  .a-vote { text-align: center; padding: 40px 22px 32px; }
+  .a-vote p { margin: 22px auto 0; color: var(--encre-douce); }
+  .tampon {
+    display: inline-block; padding: 0.05em 0.45em 0.1em;
+    font-stretch: 115%; font-weight: 900; font-size: clamp(2.6rem, 10vw, 4rem); letter-spacing: -0.01em;
+    color: var(--tampon); border: 6px solid currentColor; border-radius: 12px;
+    transform: rotate(-7deg); opacity: 0.92;
+  }
+  .tampon.frappe { animation: frappe 0.5s cubic-bezier(.2, .9, .3, 1.25) both; }
+  @keyframes frappe {
+    0%   { transform: rotate(-7deg) scale(2.6); opacity: 0; }
+    55%  { opacity: 0.92; }
+    100% { transform: rotate(-7deg) scale(1);   opacity: 0.92; }
+  }
+
+  /* Résultats en direct */
+  .resultats h2 { display: flex; align-items: center; gap: 10px; }
+  .direct { width: 10px; height: 10px; border-radius: 50%; background: var(--tampon); animation: pouls 2s ease-in-out infinite; }
+  @keyframes pouls { 50% { opacity: 0.25; } }
+  .participation { margin: 4px 0 8px; color: var(--encre-douce); }
+  .participation strong { color: var(--encre); font-size: 1.15rem; }
+  .jauge { height: 6px; background: var(--plexi); border-radius: 3px; overflow: hidden; }
+  .jauge span { display: block; height: 100%; width: 0; background: var(--encre); transition: width 0.6s ease; }
+
+  .classement { list-style: none; margin: 0; padding: 0; }
+  .classement li {
+    display: grid; grid-template-columns: 2rem 1fr auto; align-items: baseline; gap: 2px 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--plexi);
+  }
+  .classement li:last-child { border-bottom: 0; }
+  .rang { font-stretch: 125%; font-weight: 850; font-size: 1.5rem; line-height: 1; }
+  .classement li:first-child .rang { color: var(--bic); }
+  .nom { font-weight: 650; }
+  .voix { font-variant-numeric: tabular-nums; color: var(--encre-douce); font-size: 0.95rem; }
+  .barre { grid-column: 2 / 4; height: 5px; background: var(--plexi); border-radius: 3px; overflow: hidden; }
+  .barre i { display: block; height: 100%; background: var(--bic); transition: width 0.6s ease; }
+  .vide { color: var(--encre-douce); font-size: 0.95rem; padding: 8px 0; }
+  .maj { margin: 18px 0 0; font-size: 0.85rem; color: var(--encre-douce); }
+
+  /* Fenêtre de confirmation */
+  dialog {
+    width: min(440px, calc(100vw - 32px)); border: 2px solid var(--encre); border-radius: 3px;
+    padding: 24px 22px; background: var(--papier); color: var(--encre);
+  }
+  dialog::backdrop { background: rgba(23, 32, 54, 0.55); }
+  dl { margin: 16px 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
+  dt { color: var(--encre-douce); }
+  dd { margin: 0; font-weight: 700; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+  .config {
+    border: 2px solid var(--tampon); background: var(--papier); padding: 20px 22px; border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tampon.frappe, .direct { animation: none; }
+    .jauge span, .barre i { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="entete">
+    <h1>Élection des délégués<span class="classe" id="nom-classe" hidden></span></h1>
+    <div class="qui" id="qui" hidden>
+      Connecté(e) : <strong id="qui-nom"></strong>
+      <button type="button" class="lien" id="btn-deconnexion">Ce n'est pas moi</button>
+    </div>
+  </header>
+
+  <!-- Message si la configuration Supabase n'est pas faite -->
+  <section class="config" id="ecran-config" hidden>
+    <h2>Configuration manquante</h2>
+    <p>Renseigne <b>SUPABASE_URL</b> et <b>SUPABASE_KEY</b> en haut du script de ce fichier, puis recharge la page.</p>
+  </section>
+
+  <!-- Connexion -->
+  <section class="papier connexion" id="ecran-connexion" hidden>
+    <h2>Entre ton prénom</h2>
+    <p>Il te sert d'identifiant pour voter une fois et suivre les résultats en direct.</p>
+    <form id="form-connexion" class="champ" novalidate>
+      <label for="champ-prenom" class="sr">Prénom</label>
+      <input id="champ-prenom" autocomplete="given-name" autocapitalize="words" spellcheck="false" placeholder="Ton prénom" required>
+      <button class="bouton" type="submit">Entrer</button>
+    </form>
+    <p class="erreur" id="erreur-connexion" role="alert"></p>
+  </section>
+
+  <!-- Vote + résultats -->
+  <section id="ecran-vote" hidden>
+    <div class="grille">
+      <div>
+        <form class="papier bulletin" id="bulletin" novalidate>
+          <div class="bulletin-tete">
+            <h2>Bulletin de vote</h2>
+            <p>Choisis une personne par scrutin. Ton vote est secret et définitif.</p>
+          </div>
+          <fieldset>
+            <legend>Délégué(e)</legend>
+            <p class="consigne">Une seule personne.</p>
+            <div class="puces" id="puces-delegue"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Suppléant(e)</legend>
+            <p class="consigne">Une autre personne que ton choix de délégué(e).</p>
+            <div class="puces" id="puces-suppleant"></div>
+          </fieldset>
+          <div class="pied-bulletin">
+            <p class="recap" id="recap"></p>
+            <button class="bouton" type="submit" id="btn-voter" disabled>Voter</button>
+          </div>
+          <p class="erreur" id="erreur-vote" role="alert"></p>
+        </form>
+
+        <div class="papier a-vote" id="a-vote" hidden>
+          <div class="tampon" id="tampon">A voté !</div>
+          <p id="a-vote-texte">Ton bulletin est dans l'urne. Tu ne peux plus voter, mais tu peux suivre les résultats en direct.</p>
+        </div>
+      </div>
+
+      <aside class="papier resultats">
+        <h2><span class="direct" aria-hidden="true"></span>Résultats en direct</h2>
+        <p class="participation"><strong id="nb-votants">0</strong> élève(s) sur <span id="nb-inscrits">0</span> ont voté</p>
+        <div class="jauge" aria-hidden="true"><span id="jauge"></span></div>
+
+        <h3>Délégué(e) : les 3 premiers</h3>
+        <ol class="classement" id="top-delegue"></ol>
+
+        <h3>Suppléant(e) : les 3 premiers</h3>
+        <ol class="classement" id="top-suppleant"></ol>
+
+        <p class="maj" id="maj">Connexion aux résultats…</p>
+      </aside>
+    </div>
+  </section>
+
+</div>
+
+<dialog id="confirmation">
+  <h2>Confirmer ton vote</h2>
+  <dl>
+    <dt>Délégué(e)</dt><dd id="conf-delegue"></dd>
+    <dt>Suppléant(e)</dt><dd id="conf-suppleant"></dd>
+  </dl>
+  <p>Une fois dans l'urne, tu ne pourras plus changer ton vote.</p>
+  <div class="actions">
+    <button type="button" class="bouton secondaire" id="btn-modifier">Modifier</button>
+    <button type="button" class="bouton" id="btn-confirmer">Mettre dans l'urne</button>
+  </div>
+</dialog>
+
+<script>
+/* =======================  CONFIGURATION  ======================= */
+const SUPABASE_URL = "https://XXXXXXXX.supabase.co";   // Supabase > Project Settings > API
+const SUPABASE_KEY = "COLLE_ICI_TA_CLE_ANON";          // clé "anon" ou "publishable"
+const NOM_CLASSE   = "";                                 // ex. "BTS MCO 1" (laisser vide pour ne rien afficher)
+const INTERVALLE_MS = 3000;                              // fréquence de mise à jour des résultats
+/* =============================================================== */
+
+const $ = (id) => document.getElementById(id);
+const CLE_SESSION = "election-delegues-identifiant";
+
+const etat = { eleves: [], moi: null, minuteur: null };
+
+const MESSAGES = {
+  identifiant_inconnu: "Ce prénom n'est pas dans la liste de la classe. Vérifie l'orthographe.",
+  deja_vote: "Tu as déjà voté : ton premier bulletin est le seul compté.",
+  choix_invalide: "Choisis deux personnes différentes pour délégué(e) et suppléant(e).",
+  candidat_inconnu: "Un des candidats choisis n'existe pas. Recharge la page et recommence.",
+};
+
+/* --- Appels à Supabase (fonctions SQL) --- */
+async function rpc(fonction, parametres = {}) {
+  const entetes = { "Content-Type": "application/json", apikey: SUPABASE_KEY };
+  if (SUPABASE_KEY.startsWith("eyJ")) entetes.Authorization = "Bearer " + SUPABASE_KEY; // ancienne clé anon (JWT)
+  const reponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fonction}`, {
+    method: "POST", headers: entetes, body: JSON.stringify(parametres),
+  });
+  if (!reponse.ok) throw new Error(`${fonction} : ${reponse.status} ${await reponse.text()}`);
+  return reponse.json();
+}
+
+/* --- Outils --- */
+const normaliser = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, "");
+const majuscules = (s) => s.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, sep, l) => sep + l.toUpperCase());
+const nomComplet = (e) => `${e.prenom} ${majuscules(e.nom)}`;
+const parId = (id) => etat.eleves.find((e) => e.identifiant === id);
+function memoriser(id) { try { id ? localStorage.setItem(CLE_SESSION, id) : localStorage.removeItem(CLE_SESSION); } catch (_) {} }
+function relire() { try { return localStorage.getItem(CLE_SESSION); } catch (_) { return null; } }
+
+/* --- Démarrage --- */
+async function demarrer() {
+  if (NOM_CLASSE) { $("nom-classe").textContent = NOM_CLASSE; $("nom-classe").hidden = false; }
+  if (SUPABASE_URL.includes("XXXX") || SUPABASE_KEY.startsWith("COLLE")) { $("ecran-config").hidden = false; return; }
+
+  try {
+    etat.eleves = await rpc("election_liste");
+  } catch (err) {
+    console.error(err);
+    $("ecran-connexion").hidden = false;
+    $("erreur-connexion").textContent = "Impossible de joindre le serveur de vote. Vérifie ta connexion puis recharge la page.";
+    return;
+  }
+
+  const enregistre = relire();
+  if (enregistre) {
+    try {
+      const r = await rpc("election_connexion", { p_identifiant: enregistre });
+      if (r.ok) return entrer(r);
+    } catch (_) {}
+    memoriser(null);
+  }
+  $("ecran-connexion").hidden = false;
+  $("champ-prenom").focus();
+}
+
+/* --- Connexion --- */
+$("form-connexion").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const erreur = $("erreur-connexion");
+  const saisie = normaliser($("champ-prenom").value);
+  erreur.textContent = "";
+  if (!saisie) { erreur.textContent = "Entre ton prénom pour continuer."; return; }
+
+  // Plusieurs élèves avec le même prénom (ex. les deux Marie)
+  if (!parId(saisie)) {
+    const homonymes = etat.eleves.filter((e) => normaliser(e.prenom) === saisie);
+    if (homonymes.length > 1) {
+      const options = homonymes.map((e) => `« ${e.prenom}${e.nom[0]} » (${nomComplet(e)})`).join(" ou ");
+      erreur.textContent = `Il y a plusieurs ${homonymes[0].prenom} dans la classe : tape ${options}.`;
+      return;
+    }
+  }
+
+  try {
+    const r = await rpc("election_connexion", { p_identifiant: saisie });
+    if (!r.ok) { erreur.textContent = MESSAGES[r.erreur] || "Connexion impossible."; return; }
+    memoriser(r.identifiant);
+    entrer(r);
+  } catch (err) {
+    console.error(err);
+    erreur.textContent = "Impossible de joindre le serveur de vote. Réessaie dans un instant.";
+  }
+});
+
+$("btn-deconnexion").addEventListener("click", () => { memoriser(null); location.reload(); });
+
+function entrer(moi) {
+  etat.moi = moi;
+  $("ecran-connexion").hidden = true;
+  $("ecran-vote").hidden = false;
+  $("qui-nom").textContent = nomComplet(moi);
+  $("qui").hidden = false;
+
+  if (moi.a_vote) afficherAVote(false);
+  else construireBulletin();
+
+  rafraichir();
+  lancerDirect();
+}
+
+/* --- Bulletin --- */
+function construireBulletin() {
+  for (const scrutin of ["delegue", "suppleant"]) {
+    const zone = $("puces-" + scrutin);
+    zone.replaceChildren();
+    for (const e of etat.eleves) {
+      const label = document.createElement("label");
+      label.className = "puce";
+      const input = document.createElement("input");
+      input.type = "radio"; input.name = scrutin; input.value = e.identifiant;
+      const span = document.createElement("span");
+      span.textContent = nomComplet(e);
+      label.append(input, span);
+      zone.append(label);
+    }
+  }
+  $("bulletin").hidden = false;
+  majBulletin();
+}
+
+function choix(scrutin) {
+  const coche = document.querySelector(`input[name="${scrutin}"]:checked`);
+  return coche ? coche.value : null;
+}
+
+function majBulletin() {
+  const d = choix("delegue"), s = choix("suppleant");
+  // Une même personne ne peut pas être choisie aux deux postes
+  document.querySelectorAll('input[name="suppleant"]').forEach((i) => { i.disabled = i.value === d; });
+  document.querySelectorAll('input[name="delegue"]').forEach((i) => { i.disabled = i.value === s; });
+
+  const recap = $("recap");
+  recap.replaceChildren();
+  const ligne = (titre, id) => {
+    const p = document.createElement("span");
+    p.append(titre + " : ");
+    const b = document.createElement("b");
+    b.textContent = id ? nomComplet(parId(id)) : "à choisir";
+    p.append(b);
+    return p;
+  };
+  recap.append(ligne("Délégué(e)", d), document.createElement("br"), ligne("Suppléant(e)", s));
+  $("btn-voter").disabled = !(d && s);
+}
+
+$("bulletin").addEventListener("change", majBulletin);
+
+$("bulletin").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const d = choix("delegue"), s = choix("suppleant");
+  if (!d || !s) return;
+  $("conf-delegue").textContent = nomComplet(parId(d));
+  $("conf-suppleant").textContent = nomComplet(parId(s));
+  $("confirmation").showModal();
+});
+
+$("btn-modifier").addEventListener("click", () => $("confirmation").close());
+
+$("btn-confirmer").addEventListener("click", async () => {
+  const bouton = $("btn-confirmer");
+  bouton.disabled = true;
+  $("erreur-vote").textContent = "";
+  try {
+    const r = await rpc("election_voter", {
+      p_votant: etat.moi.identifiant, p_delegue: choix("delegue"), p_suppleant: choix("suppleant"),
+    });
+    $("confirmation").close();
+    if (r.ok) {
+      etat.moi.a_vote = true;
+      afficherAVote(true);
+      rafraichir();
+    } else if (r.erreur === "deja_vote") {
+      etat.moi.a_vote = true;
+      afficherAVote(false, MESSAGES.deja_vote);
+    } else {
+      $("erreur-vote").textContent = MESSAGES[r.erreur] || "Le vote n'a pas été enregistré. Réessaie.";
+    }
+  } catch (err) {
+    console.error(err);
+    $("confirmation").close();
+    $("erreur-vote").textContent = "Le vote n'a pas pu être envoyé. Vérifie ta connexion et réessaie.";
+  } finally {
+    bouton.disabled = false;
+  }
+});
+
+function afficherAVote(animer, message) {
+  $("bulletin").hidden = true;
+  $("a-vote").hidden = false;
+  if (message) $("a-vote-texte").textContent = message;
+  const tampon = $("tampon");
+  tampon.classList.remove("frappe");
+  if (animer) { void tampon.offsetWidth; tampon.classList.add("frappe"); }
+}
+
+/* --- Résultats en direct --- */
+function lancerDirect() {
+  clearInterval(etat.minuteur);
+  etat.minuteur = setInterval(() => { if (!document.hidden) rafraichir(); }, INTERVALLE_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) rafraichir(); });
+}
+
+async function rafraichir() {
+  try {
+    const r = await rpc("election_resultats");
+    $("nb-votants").textContent = r.votants;
+    $("nb-inscrits").textContent = r.inscrits;
+    $("jauge").style.width = (r.inscrits ? (100 * r.votants / r.inscrits) : 0) + "%";
+    dessinerClassement($("top-delegue"), r.delegue, r.votants);
+    dessinerClassement($("top-suppleant"), r.suppleant, r.votants);
+    $("maj").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR");
+  } catch (err) {
+    console.error(err);
+    $("maj").textContent = "Résultats momentanément indisponibles, nouvelle tentative dans quelques secondes.";
+  }
+}
+
+function dessinerClassement(liste, lignes, votants) {
+  liste.replaceChildren();
+  if (!lignes || !lignes.length) {
+    const li = document.createElement("li");
+    li.className = "vide";
+    li.textContent = "Aucune voix pour l'instant.";
+    liste.append(li);
+    return;
+  }
+  lignes.forEach((l, i) => {
+    const li = document.createElement("li");
+    const rang = document.createElement("span"); rang.className = "rang"; rang.textContent = i + 1;
+    const nom = document.createElement("span"); nom.className = "nom"; nom.textContent = nomComplet(l);
+    const voix = document.createElement("span"); voix.className = "voix";
+    voix.textContent = l.voix + " voix";
+    const barre = document.createElement("span"); barre.className = "barre";
+    const remplissage = document.createElement("i");
+    remplissage.style.width = (votants ? (100 * l.voix / votants) : 0) + "%";
+    barre.append(remplissage);
+    li.append(rang, nom, voix, barre);
+    liste.append(li);
+  });
+}
+
+demarrer();
+</script>
+</body>
+</html>
