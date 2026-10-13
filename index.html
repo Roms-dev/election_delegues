@@ -18,6 +18,7 @@
     --bic-pale: #E4E9FA;
     --tampon: #C42B3A;     /* tampon "A voté" */
     --trait: #C9D2DC;
+    --vert: #1E7A46;
     color-scheme: light;
     font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     color: var(--encre);
@@ -178,6 +179,51 @@
     border: 2px solid var(--tampon); background: var(--papier); padding: 20px 22px; border-radius: 3px;
   }
 
+  /* Administration */
+  .admin-tete {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 20px; margin-bottom: 18px;
+  }
+  .admin-tete p { margin: 0; color: var(--encre-douce); }
+  .admin-tete strong { color: var(--encre); }
+  .admin-bloc + .admin-bloc { margin-top: 22px; }
+  .admin-bloc h3 { margin-top: 0; }
+  .form-ajout { display: grid; gap: 12px; margin-top: 12px; }
+  @media (min-width: 760px) { .form-ajout { grid-template-columns: 1fr 1fr 1fr auto; align-items: end; } }
+  .form-ajout label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--encre-douce); }
+  .saisie {
+    width: 100%; min-width: 0; padding: 9px 11px; background: var(--papier);
+    border: 1.5px solid var(--trait); border-radius: 3px;
+  }
+  .saisie:focus { outline: 3px solid var(--bic); outline-offset: 1px; border-color: var(--encre); }
+  .aide { font-size: 0.88rem; color: var(--encre-douce); margin: 10px 0 0; }
+  .defile { overflow-x: auto; margin: 4px -22px -24px; padding: 0 22px 12px; }
+  table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 0.95rem; }
+  th {
+    text-align: left; font-weight: 700; font-size: 0.85rem; color: var(--encre-douce);
+    padding: 8px 10px; border-bottom: 2px solid var(--encre);
+  }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--plexi); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td.chiffre, th.chiffre { text-align: center; font-variant-numeric: tabular-nums; }
+  td .saisie { padding: 6px 8px; }
+  .duo { display: flex; gap: 6px; }
+  .etiquette { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+  .etiquette.oui { background: var(--bic-pale); color: var(--bic); }
+  .etiquette.non { background: var(--plexi); color: var(--encre-douce); }
+  .actions-ligne { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  td .actions-ligne { flex-wrap: nowrap; }
+  .bouton.petit { padding: 6px 10px; font-size: 0.85rem; border-width: 1.5px; white-space: nowrap; }
+  .bouton.danger { background: var(--papier); color: var(--tampon); border-color: var(--tampon); }
+  .bouton.danger:hover:not(:disabled) { background: var(--tampon); color: var(--papier); border-color: var(--tampon); }
+  .zone-danger { border: 1.5px solid var(--tampon); }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%); z-index: 10;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px);
+    padding: 12px 18px; border-radius: 3px; background: var(--vert); color: var(--papier); font-weight: 600;
+    box-shadow: 0 6px 20px rgba(23, 32, 54, 0.25);
+  }
+  .toast.ko { background: var(--tampon); }
+
   @media (prefers-reduced-motion: reduce) {
     .tampon.frappe, .direct { animation: none; }
     .jauge span, .barre i { transition: none; }
@@ -261,7 +307,76 @@
     </div>
   </section>
 
+  <!-- Connexion admin -->
+  <section class="papier connexion" id="ecran-admin-connexion" hidden>
+    <h2>Accès administrateur</h2>
+    <p>Entre le mot de passe admin défini dans Supabase.</p>
+    <form id="form-admin" class="champ" novalidate>
+      <label for="champ-mdp" class="sr">Mot de passe</label>
+      <input id="champ-mdp" type="password" autocomplete="current-password" placeholder="Mot de passe" required>
+      <button class="bouton" type="submit">Ouvrir</button>
+    </form>
+    <p class="erreur" id="erreur-admin" role="alert"></p>
+    <button type="button" class="lien" data-quitter style="margin-left:0">Retour à la connexion élève</button>
+  </section>
+
+  <!-- Administration -->
+  <section id="ecran-admin" hidden>
+    <div class="admin-tete">
+      <h2>Administration</h2>
+      <p><strong id="adm-votants">0</strong> élève(s) sur <span id="adm-inscrits">0</span> ont voté
+        <button type="button" class="lien" data-quitter>Quitter l'administration</button></p>
+    </div>
+
+    <div class="papier admin-bloc">
+      <h3>Ajouter un élève</h3>
+      <form id="form-ajout" class="form-ajout" novalidate>
+        <label>Prénom <input class="saisie" id="ajout-prenom" autocomplete="off"></label>
+        <label>Nom <input class="saisie" id="ajout-nom" autocomplete="off"></label>
+        <label>Identifiant <input class="saisie" id="ajout-identifiant" autocomplete="off" spellcheck="false"></label>
+        <button class="bouton" type="submit">Ajouter l'élève</button>
+      </form>
+      <p class="aide">L'identifiant est ce que l'élève tape pour se connecter. Il est proposé à partir du prénom (lettres sans accent).</p>
+    </div>
+
+    <div class="papier admin-bloc">
+      <h3>Élèves de la classe (<span id="adm-nb">0</span>)</h3>
+      <div class="defile">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Prénom et nom</th>
+              <th scope="col">Identifiant</th>
+              <th scope="col">Vote</th>
+              <th scope="col" class="chiffre">Voix délégué(e)</th>
+              <th scope="col" class="chiffre">Voix suppléant(e)</th>
+              <th scope="col"><span class="sr">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="adm-lignes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="papier admin-bloc zone-danger">
+      <h3>Remettre toute l'élection à zéro</h3>
+      <p>Efface tous les bulletins. La liste des élèves est conservée et tout le monde pourra revoter.</p>
+      <button type="button" class="bouton danger" id="btn-tout-zero">Effacer tous les votes</button>
+    </div>
+  </section>
+
 </div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<dialog id="dialogue-admin">
+  <h2 id="dlg-titre"></h2>
+  <p id="dlg-texte"></p>
+  <div class="actions">
+    <button type="button" class="bouton secondaire" id="dlg-retour">Retour</button>
+    <button type="button" class="bouton danger" id="dlg-ok"></button>
+  </div>
+</dialog>
 
 <dialog id="confirmation">
   <h2>Confirmer ton vote</h2>
@@ -348,6 +463,7 @@ $("form-connexion").addEventListener("submit", async (ev) => {
   const saisie = normaliser($("champ-prenom").value);
   erreur.textContent = "";
   if (!saisie) { erreur.textContent = "Entre ton prénom pour continuer."; return; }
+  if (saisie === "admin") { ouvrirConnexionAdmin(); return; }
 
   // Plusieurs élèves avec le même prénom (ex. les deux Marie)
   if (!parId(saisie)) {
@@ -526,6 +642,274 @@ function dessinerClassement(liste, lignes, votants) {
     liste.append(li);
   });
 }
+
+/* =======================  ADMINISTRATION  ======================= */
+const admin = { mdp: null, eleves: [], edition: null, minuteur: null, idManuel: false };
+
+const MESSAGES_ADMIN = {
+  acces_refuse: "Mot de passe incorrect.",
+  champs_vides: "Le prénom, le nom et l'identifiant sont obligatoires.",
+  identifiant_invalide: "L'identifiant doit contenir de 2 à 30 lettres, sans accent, espace ni chiffre.",
+  identifiant_reserve: "« admin » est réservé à l'administration, choisis un autre identifiant.",
+  identifiant_pris: "Cet identifiant est déjà utilisé par un autre élève.",
+  introuvable: "Cet élève n'existe plus : la liste a été actualisée.",
+};
+
+function ouvrirConnexionAdmin() {
+  $("ecran-connexion").hidden = true;
+  $("ecran-admin-connexion").hidden = false;
+  $("champ-mdp").focus();
+}
+
+document.querySelectorAll("[data-quitter]").forEach((b) => b.addEventListener("click", () => location.reload()));
+
+let minuteurToast;
+function annoncer(texte, erreur = false) {
+  const t = $("toast");
+  t.textContent = texte;
+  t.className = "toast" + (erreur ? " ko" : "");
+  t.hidden = false;
+  clearTimeout(minuteurToast);
+  minuteurToast = setTimeout(() => { t.hidden = true; }, 4500);
+}
+
+function demanderConfirmation(titre, texte, libelle) {
+  return new Promise((resoudre) => {
+    const d = $("dialogue-admin");
+    $("dlg-titre").textContent = titre;
+    $("dlg-texte").textContent = texte;
+    $("dlg-ok").textContent = libelle;
+    const fin = (reponse) => { if (d.open) d.close(); resoudre(reponse); };
+    $("dlg-ok").onclick = () => fin(true);
+    $("dlg-retour").onclick = () => fin(false);
+    d.oncancel = () => fin(false);
+    d.showModal();
+  });
+}
+
+async function adminRpc(fonction, parametres = {}) {
+  const r = await rpc(fonction, { p_mdp: admin.mdp, ...parametres });
+  if (r && r.ok === false && r.erreur === "acces_refuse") {
+    annoncer("Le mot de passe admin a changé : reconnecte-toi.", true);
+    setTimeout(() => location.reload(), 1800);
+  }
+  return r;
+}
+
+async function action(fn) {
+  try { await fn(); }
+  catch (err) { console.error(err); annoncer("Le serveur ne répond pas. Réessaie dans un instant.", true); }
+}
+
+$("form-admin").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const mdp = $("champ-mdp").value;
+  const erreur = $("erreur-admin");
+  erreur.textContent = "";
+  if (!mdp) { erreur.textContent = "Entre le mot de passe."; return; }
+  try {
+    const r = await rpc("election_admin_verifier", { p_mdp: mdp });
+    if (!r.ok) { erreur.textContent = MESSAGES_ADMIN.acces_refuse; return; }
+    admin.mdp = mdp;
+    $("champ-mdp").value = "";
+    $("ecran-admin-connexion").hidden = true;
+    $("ecran-admin").hidden = false;
+    await chargerAdmin();
+    admin.minuteur = setInterval(() => { if (!document.hidden && !admin.edition) chargerAdmin(); }, 5000);
+  } catch (err) {
+    console.error(err);
+    erreur.textContent = "Impossible de joindre le serveur. Réessaie dans un instant.";
+  }
+});
+
+async function chargerAdmin() {
+  await action(async () => {
+    const r = await adminRpc("election_admin_liste");
+    if (!r.ok) return;
+    admin.eleves = r.eleves;
+    $("adm-votants").textContent = r.votants;
+    $("adm-inscrits").textContent = r.inscrits;
+    $("adm-nb").textContent = r.eleves.length;
+    dessinerAdmin();
+  });
+}
+
+/* Tableau des élèves */
+function cellule(contenu, classe) {
+  const td = document.createElement("td");
+  if (classe) td.className = classe;
+  if (contenu instanceof Node) td.append(contenu); else td.textContent = contenu;
+  return td;
+}
+function petitBouton(texte, classe, auClic) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "bouton petit " + classe;
+  b.textContent = texte;
+  b.addEventListener("click", auClic);
+  return b;
+}
+function champ(valeur, libelle) {
+  const i = document.createElement("input");
+  i.className = "saisie";
+  i.value = valeur;
+  i.setAttribute("aria-label", libelle);
+  i.autocomplete = "off";
+  return i;
+}
+function groupe(...enfants) {
+  const div = document.createElement("div");
+  div.className = "actions-ligne";
+  div.append(...enfants);
+  return div;
+}
+
+function dessinerAdmin() {
+  const corps = $("adm-lignes");
+  corps.replaceChildren();
+  for (const e of admin.eleves) {
+    const tr = document.createElement("tr");
+    const etiquette = document.createElement("span");
+    etiquette.className = "etiquette " + (e.a_vote ? "oui" : "non");
+    etiquette.textContent = e.a_vote ? "A voté" : "Pas encore";
+
+    if (admin.edition === e.identifiant) {
+      const prenom = champ(e.prenom, "Prénom");
+      const nom = champ(e.nom, "Nom");
+      const identifiant = champ(e.identifiant, "Identifiant");
+      identifiant.spellcheck = false;
+      const duo = document.createElement("div");
+      duo.className = "duo";
+      duo.append(prenom, nom);
+      const valider = () => enregistrer(e, prenom.value, nom.value, identifiant.value);
+      [prenom, nom, identifiant].forEach((i) => i.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") valider();
+        if (ev.key === "Escape") { admin.edition = null; dessinerAdmin(); }
+      }));
+      tr.append(
+        cellule(duo), cellule(identifiant), cellule(etiquette),
+        cellule(e.voix_delegue, "chiffre"), cellule(e.voix_suppleant, "chiffre"),
+        cellule(groupe(
+          petitBouton("Enregistrer", "", valider),
+          petitBouton("Annuler", "secondaire", () => { admin.edition = null; dessinerAdmin(); }),
+        )),
+      );
+      corps.append(tr);
+      prenom.focus();
+    } else {
+      const remettre = petitBouton("Remettre à zéro", "secondaire", () => remettreAZero(e));
+      remettre.disabled = !e.a_vote;
+      remettre.title = e.a_vote ? "Annule son vote : il ou elle pourra revoter" : "Cet élève n'a pas encore voté";
+      tr.append(
+        cellule(nomComplet(e)), cellule(e.identifiant), cellule(etiquette),
+        cellule(e.voix_delegue, "chiffre"), cellule(e.voix_suppleant, "chiffre"),
+        cellule(groupe(
+          petitBouton("Modifier", "secondaire", () => { admin.edition = e.identifiant; dessinerAdmin(); }),
+          remettre,
+          petitBouton("Supprimer", "danger", () => supprimer(e)),
+        )),
+      );
+      corps.append(tr);
+    }
+  }
+}
+
+/* Actions */
+function enregistrer(e, prenom, nom, identifiant) {
+  return action(async () => {
+    const nouvelId = normaliser(identifiant);
+    const r = await adminRpc("election_admin_modifier", {
+      p_ancien: e.identifiant, p_identifiant: nouvelId, p_prenom: prenom, p_nom: nom,
+    });
+    if (r.ok) {
+      admin.edition = null;
+      annoncer(`${prenom.trim()} ${majuscules(nom.trim())} mis(e) à jour`
+        + (nouvelId !== e.identifiant ? `, nouvel identifiant : ${nouvelId}.` : "."));
+      await chargerAdmin();
+    } else {
+      annoncer(MESSAGES_ADMIN[r.erreur] || "La modification n'a pas été enregistrée.", true);
+      if (r.erreur === "introuvable") { admin.edition = null; await chargerAdmin(); }
+    }
+  });
+}
+
+async function remettreAZero(e) {
+  const ok = await demanderConfirmation(
+    `Remettre à zéro le vote de ${nomComplet(e)} ?`,
+    "Son bulletin est retiré du décompte et il ou elle pourra voter à nouveau.",
+    "Remettre à zéro",
+  );
+  if (!ok) return;
+  await action(async () => {
+    const r = await adminRpc("election_admin_reinitialiser_vote", { p_identifiant: e.identifiant });
+    if (r.ok && r.bulletin_trouve) annoncer(`Vote de ${nomComplet(e)} remis à zéro : il ou elle peut revoter.`);
+    else if (r.ok) annoncer(`${nomComplet(e)} peut revoter, mais son ancien bulletin (enregistré avant la mise à jour) n'a pas pu être retiré.`, true);
+    else annoncer(MESSAGES_ADMIN[r.erreur] || "Remise à zéro impossible.", true);
+    await chargerAdmin();
+  });
+}
+
+async function supprimer(e) {
+  const voix = e.voix_delegue + e.voix_suppleant;
+  const ok = await demanderConfirmation(
+    `Supprimer ${nomComplet(e)} ?`,
+    voix
+      ? `${nomComplet(e)} a reçu ${voix} voix : ces bulletins seront annulés et les élèves concernés pourront revoter.`
+      : `${nomComplet(e)} sera retiré(e) de la liste et ne pourra plus voter ni être élu(e).`,
+    "Supprimer",
+  );
+  if (!ok) return;
+  await action(async () => {
+    const r = await adminRpc("election_admin_supprimer", { p_identifiant: e.identifiant });
+    if (r.ok) annoncer(`${nomComplet(e)} supprimé(e).` + (r.a_revoter ? ` ${r.a_revoter} élève(s) doivent revoter.` : ""));
+    else annoncer(MESSAGES_ADMIN[r.erreur] || "Suppression impossible.", true);
+    await chargerAdmin();
+  });
+}
+
+/* Ajout */
+function proposerIdentifiant() {
+  if (admin.idManuel) return;
+  const p = normaliser($("ajout-prenom").value), n = normaliser($("ajout-nom").value);
+  let id = p;
+  // Prénom déjà porté par un autre élève : on ajoute l'initiale du nom (ex. MarieD)
+  const homonyme = admin.eleves.some((e) => e.identifiant === p || normaliser(e.prenom) === p);
+  if (p && homonyme && n) id = p + n[0];
+  $("ajout-identifiant").value = id;
+}
+$("ajout-prenom").addEventListener("input", proposerIdentifiant);
+$("ajout-nom").addEventListener("input", proposerIdentifiant);
+$("ajout-identifiant").addEventListener("input", () => { admin.idManuel = $("ajout-identifiant").value !== ""; });
+
+$("form-ajout").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const prenom = $("ajout-prenom").value, nom = $("ajout-nom").value;
+  const identifiant = normaliser($("ajout-identifiant").value);
+  action(async () => {
+    const r = await adminRpc("election_admin_ajouter", { p_identifiant: identifiant, p_prenom: prenom, p_nom: nom });
+    if (!r.ok) { annoncer(MESSAGES_ADMIN[r.erreur] || "L'élève n'a pas été ajouté(e).", true); return; }
+    annoncer(`${prenom.trim()} ${majuscules(nom.trim())} ajouté(e), identifiant : ${identifiant}.`);
+    $("form-ajout").reset();
+    admin.idManuel = false;
+    $("ajout-prenom").focus();
+    await chargerAdmin();
+  });
+});
+
+/* Remise à zéro générale */
+$("btn-tout-zero").addEventListener("click", async () => {
+  const ok = await demanderConfirmation(
+    "Effacer tous les votes ?",
+    "Tous les bulletins seront supprimés et tous les élèves pourront revoter. Cette action est irréversible.",
+    "Effacer tous les votes",
+  );
+  if (!ok) return;
+  await action(async () => {
+    const r = await adminRpc("election_admin_reinitialiser_tout");
+    if (r.ok) annoncer("Tous les votes ont été effacés.");
+    await chargerAdmin();
+  });
+});
 
 demarrer();
 </script>
